@@ -4,6 +4,7 @@ var request = require('request');
 var async = require('async');
 var logger = require('morgan');
 
+var remoteHost = 'http://localhost:45737';
 var app = express();
 app.use(logger('short'));
 app.set('port', process.env.PORT || 4000);
@@ -39,7 +40,7 @@ app.get('/api/fqn/:id/:fqn', function(req, res) {
 			if (index === 1) {
 				url = url + '/'+ req.params.id
 			}
-			var requestOptions = {url: 'http://localhost:45737' + url, json:true};
+			var requestOptions = {url: remoteHost + url, json:true};
 			console.log("Loading: " + url);
 			request.get(requestOptions, function (e, r, result) {
 				var urlToFetch = fqnParts[index];
