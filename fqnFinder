@@ -1,0 +1,71 @@
+var async = require('async');
+
+function createResult(id, index, searchForFqn, result) {
+	var parts = searchForFqn.split('.');
+	var currentField = parts[index]
+	var value = result[currentField];
+	var isArray = (currentField.indexOf('(') !== -1);
+	var indexer = -1;
+	if (isArray) {
+		var fieldSections = currentField.split('(');
+		currentField = fieldSections[0];
+		indexer = fieldSections[1].replace(')', '') - 1;
+	}
+
+	var value = result[currentField];
+	if (isArray) {
+		value = value[indexer];
+	}
+
+	var isCount = parts[parts.length -1] === 'Count';
+	var isLink = value && value[0] === '/';
+
+	if (isLink) {
+		nextPage = value;
+	}
+
+	if (index === 0 && isLink) {
+		nextPage = value + '/' + id;
+	} 
+
+	if (isCount && value) {
+		value = value.length;
+	}
+
+	return {
+		index: index,
+		isLink: isLink,
+		value: value,
+		nextPage: nextPage
+	}
+}
+
+function fqnFinder(http) {
+	var entityUrl = '/api/entities';
+	function locateFqn(id, fqn, callback) {
+
+		function loadPage(index, url, callback) {
+			http.getPage(url, function(err, result) {
+				var resultPage = createResult(id, index, fqn, result);
+				if (resultPage.isLink) {
+					return loadPage(resultPage.index + 1, resultPage.nextPage, callback);
+				}
+
+				return callback(err, resultPage.value);
+			});
+		}
+
+		loadPage(0, entityUrl, callback);
+	}
+
+	var locate = function(id, fqns, callback) {
+		function findFqn(fqn, callback) {
+			locateFqn(id, fqn, callback);
+		}
+		async.mapSeries(fqns, findFqn, callback);
+	}
+
+	return { locate: locate };
+}
+
+module.exports = fqnFinder;

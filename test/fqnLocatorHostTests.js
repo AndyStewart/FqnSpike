@@ -1,51 +1,5 @@
 var should = require('should');
-var async = require('async');
-
-function createResult(searchForFqn, result) {
-	var parts = searchForFqn.split('.');
-	var value = result[parts[1]];
-	var isCount = parts[parts.length -1] === 'Count';
-	if (isCount && value) {
-		value = value.length;
-	}
-
-	return {
-		root: parts[0],
-		fqnParts: parts,
-		results: result,
-		isCount: isCount,
-		isLink: value && value[0] === '/',
-		value: value
-	}
-}
-
-function fqnFinder(http) {
-	var entityUrl = '/api/entities';
-	function locateFqn(id, fqn, callback) {
-
-		function loadPage(url, callback) {
-			http.getPage(entityUrl, function(err, result) {
-				var resultPage = createResult(fqn, result);
-				if (resultPage.isLink) {
-					return loadPage(resultPage.value, callback);
-				}
-
-				return callback(err, resultPage.value);
-			});
-		}
-
-		loadPage(entityUrl, callback);
-	}
-
-	var locate = function(id, fqns, callback) {
-		function findFqn(fqn, callback) {
-			locateFqn(id, fqn, callback);
-		}
-		async.map(fqns, findFqn, callback);
-	}
-
-	return { locate: locate };
-}
+var fqnFinder = require('../fqnFinder');
 
 describe("When retrieving basic matter content", function() {
 	var testResult;
@@ -130,7 +84,7 @@ describe("When retrieving related matter content", function() {
 
 	beforeEach(function(done) {
 		var locator = fqnFinder({getPage: getPage});
-		locator.locate(1, ['Matter.Solicitors[1].Firstname', 'Matter.Solicitors[1].Surname'], function(err, result) {
+		locator.locate(1, ['Matter.Solicitors(1).Firstname', 'Matter.Solicitors(1).Surname'], function(err, result) {
 			testResult = result;
 			done();
 		});
